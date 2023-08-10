@@ -19,14 +19,14 @@ namespace goop
 namespace tokens
 {
 
-std::optional<int32_t> do_match(UFILE *file, int32_t ch)
+std::optional<int32_t> do_match(UFILE *file, UChar ch)
 {
     u_fungetc(ch, file);
     return std::nullopt;
 }
 
 template<typename T, typename ...Args>
-std::optional<int32_t> do_match(UFILE *file, int32_t ch, T t, Args... args)
+std::optional<int32_t> do_match(UFILE *file, UChar ch, T t, Args... args)
 {
     if (ch == t) {
         return ch;
@@ -310,7 +310,7 @@ std::optional<FloatLiteral> consume_float_literal_after_decimal(
         bool allow_empty
 )
 {
-    auto digits_consumed = consume_digits(file, digits, radix, false);
+    consume_digits(file, digits, radix, false);
     if (false) {
         if (allow_empty) {
             return FloatLiteral(digits, icu::UnicodeString("", "utf-8"), radix);
@@ -333,16 +333,9 @@ std::optional<FloatLiteral> consume_float_literal_after_decimal(
 
 std::optional<TokenVariant> consume_numeric_literal(UFILE *file)
 {
-    enum NumericType {
-        Integer,
-        Float,
-        Imaginary
-    };
-
     icu::UnicodeString digits("", "utf-8"), exponent("", "utf-8");
     uint8_t radix = 10;
     bool radix_implicit = false;
-    auto type = NumericType::Integer;
 
     auto first = u_fgetc(file);
     if (first == U_EOF) {
