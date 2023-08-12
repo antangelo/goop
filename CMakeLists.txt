@@ -36,3 +36,5 @@ target_link_libraries(goop goop-parse)
 
 add_executable(goop-tok tools/tok/main.cpp)
 target_link_libraries(goop-tok PUBLIC goop-parse)
+
+add_subdirectory(test)

@@ -1,0 +1,6 @@
+import os
+
+config.goop_src_root = r'@CMAKE_SOURCE_DIR@'
+config.goop_bin_root = r'@CMAKE_BINARY_DIR@'
+
+lit_config.load_config(config, os.path.join(config.goop_src_root, 'test/lit.cfg.py'))

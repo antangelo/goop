@@ -24,7 +24,7 @@ struct Token {
     virtual std::ostream &operator<<(std::ostream &) const = 0;
 };
 
-struct Keyword : public Token {
+struct Keyword final : public Token {
     enum Kind {
         BREAK,
         CASE,
@@ -59,7 +59,7 @@ struct Keyword : public Token {
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct Punctuation : public Token {
+struct Punctuation final : public Token {
     enum Kind {
         PLUS,
         MINUS,
@@ -117,13 +117,13 @@ struct Punctuation : public Token {
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct Identifier : public Token {
+struct Identifier final : public Token {
     icu::UnicodeString ident;
     Identifier(icu::UnicodeString ident): ident{ident} {}
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct FloatLiteral : public Token {
+struct FloatLiteral final : public Token {
     icu::UnicodeString mantissa;
     icu::UnicodeString exponent;
     std::optional<int32_t> exponent_char;
@@ -139,7 +139,7 @@ struct FloatLiteral : public Token {
 };
 
 
-struct IntLiteral : public Token {
+struct IntLiteral final : public Token {
     icu::UnicodeString lit;
     uint8_t radix;
 
@@ -150,7 +150,7 @@ struct IntLiteral : public Token {
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct ImaginaryLiteral : public Token {
+struct ImaginaryLiteral final : public Token {
     std::variant<IntLiteral, FloatLiteral> inner;
 
     ImaginaryLiteral(std::variant<IntLiteral, FloatLiteral> inner):
@@ -159,7 +159,7 @@ struct ImaginaryLiteral : public Token {
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct RuneLiteral : public Token {
+struct RuneLiteral final : public Token {
     enum Kind {
         NORMAL,
         LITTLE_U,
@@ -177,14 +177,14 @@ struct RuneLiteral : public Token {
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct StringLiteral : public Token {
+struct StringLiteral final : public Token {
     std::vector<RuneLiteral> runes;
 
     StringLiteral() {}
     std::ostream &operator<<(std::ostream &) const override;
 };
 
-struct Comment : public Token {
+struct Comment final : public Token {
     icu::UnicodeString comment;
     bool multiline;
 
