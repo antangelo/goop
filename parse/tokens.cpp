@@ -631,7 +631,7 @@ std::optional<Comment> consume_comment(UFILE *file)
 
 TokenStream consume_tokens(UFILE *file)
 {
-    std::vector<TokenVariant> tokens;
+    std::deque<TokenVariant> tokens;
 
     while (true) {
         auto peek = u_fgetc(file);

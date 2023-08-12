@@ -24,7 +24,9 @@ add_executable(goop driver/main.cpp)
 find_package(Boost REQUIRED)
 find_package(ICU COMPONENTS data io uc tu REQUIRED)
 
-add_library(goop-parse parse/parser.cpp parse/tokens.cpp)
+add_library(goop-parse 
+    parse/parser.cpp parse/tokens.cpp
+    parse/parser_type.cpp)
 target_include_directories(goop-parse PUBLIC parse)
 target_include_directories(goop-parse PUBLIC ${ICU_INCLUDE_DIRS})
 target_link_libraries(goop-parse ${ICU_LIBRARIES})

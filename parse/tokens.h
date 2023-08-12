@@ -8,6 +8,8 @@
 #include <concepts>
 #include <ostream>
 #include <variant>
+#include <vector>
+#include <deque>
 #include <unicode/unistr.h>
 #include <unicode/ustdio.h>
 #include <unicode/ustream.h>
@@ -18,7 +20,6 @@ namespace goop
 
 namespace tokens
 {
-
 
 struct Token {
     virtual std::ostream &operator<<(std::ostream &) const = 0;
@@ -198,14 +199,62 @@ typedef std::variant<Keyword, Identifier, IntLiteral,
         RuneLiteral, StringLiteral, Comment> TokenVariant;
 
 class TokenStream {
-    std::vector<TokenVariant> tokens;
+    std::deque<TokenVariant> tokens;
 
     public:
-    TokenStream(std::vector<TokenVariant> tokens):
+    TokenStream(std::deque<TokenVariant> tokens):
         tokens{tokens} {}
 
-    const std::vector<TokenVariant> all() const {
+    const std::deque<TokenVariant> all() const {
         return tokens;
+    }
+
+    template<class... Ts>
+    struct overloaded : Ts... { using Ts::operator()...; };
+    template<class... Ts>
+    overloaded(Ts...) -> overloaded<Ts...>;
+
+    template<std::derived_from<Token> T>
+    std::optional<T> match_consume() {
+        return std::visit(overloaded {
+                [&](T t) -> std::optional<T> { 
+                    tokens.pop_front();
+                    return t;
+                },
+                [](auto &) -> std::optional<T> { return std::nullopt; }
+                }, tokens.front());
+    }
+
+    std::optional<Keyword> match_keyword(Keyword::Kind kind) {
+        return std::visit(overloaded {
+                [&](Keyword keyword) -> std::optional<Keyword> {
+                    if (keyword.kind == kind) {
+                        tokens.pop_front();
+                        return keyword;
+                    }
+
+                    return std::nullopt;
+                },
+                [](auto &) -> std::optional<Keyword> { return std::nullopt; }
+                }, tokens.front());
+    }
+
+    std::optional<Punctuation> match_punctuation(Punctuation::Kind kind) {
+        return std::visit(overloaded {
+                [&](Punctuation punct) -> std::optional<Punctuation> {
+                    if (punct.kind == kind) {
+                        tokens.pop_front();
+                        return punct;
+                    }
+
+                    return std::nullopt;
+                },
+                [](auto &) -> std::optional<Punctuation> { return std::nullopt; }
+                }, tokens.front());
+    }
+
+    void unget(TokenVariant t) {
+        tokens.push_front(t);
     }
 };
 
