@@ -3,11 +3,9 @@
 #include <optional>
 #include <vector>
 
-namespace goop
-{
+namespace goop {
 
-namespace parse
-{
+namespace parse {
 
 std::optional<IdentifierList> parse_identifier_list(tokens::TokenStream &ts)
 {
@@ -27,6 +25,6 @@ std::optional<IdentifierList> parse_identifier_list(tokens::TokenStream &ts)
     return IdentifierList(idents);
 }
 
-}
+} // namespace parse
 
-}
+} // namespace goop

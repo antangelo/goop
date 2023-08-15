@@ -4,39 +4,38 @@
 #include "tokens.h"
 #include <ostream>
 
-namespace goop
-{
+namespace goop {
 
-namespace parse
-{
+namespace parse {
 
-struct ASTNode
-{
-    virtual ~ASTNode() {}
+struct ASTNode {
+    virtual ~ASTNode()
+    {
+    }
     virtual void print(std::ostream &, int depth) const = 0;
 };
 
-template<std::derived_from<ASTNode> T>
+template <std::derived_from<ASTNode> T>
 std::ostream &operator<<(std::ostream &os, const T &t)
 {
     t.print(os, 0);
     return os;
 }
 
-struct IdentifierList : public virtual ASTNode
-{
+struct IdentifierList : public virtual ASTNode {
     std::vector<tokens::Identifier> idents;
 
-    IdentifierList(std::vector<tokens::Identifier> idents):
-        idents{idents} {}
+    IdentifierList(std::vector<tokens::Identifier> idents) : idents{ idents }
+    {
+    }
 
     void print(std::ostream &os, int depth) const override;
 };
 
 std::optional<IdentifierList> parse_identifier_list(tokens::TokenStream &ts);
 
-}
+} // namespace parse
 
-}
+} // namespace goop
 
 #endif

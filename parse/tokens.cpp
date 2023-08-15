@@ -5,19 +5,17 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <unicode/schriter.h>
 #include <unicode/uchar.h>
-#include <unicode/urename.h>
-#include <unicode/ustream.h>
 #include <unicode/unistr.h>
 #include <unicode/unum.h>
-#include <unicode/schriter.h>
+#include <unicode/urename.h>
+#include <unicode/ustream.h>
 #include <variant>
 
-namespace goop
-{
+namespace goop {
 
-namespace tokens
-{
+namespace tokens {
 
 std::optional<int32_t> do_match(UFILE *file, UChar ch)
 {
@@ -25,7 +23,7 @@ std::optional<int32_t> do_match(UFILE *file, UChar ch)
     return std::nullopt;
 }
 
-template<typename T, typename ...Args>
+template <typename T, typename... Args>
 std::optional<int32_t> do_match(UFILE *file, UChar ch, T t, Args... args)
 {
     if (ch == t) {
@@ -35,7 +33,7 @@ std::optional<int32_t> do_match(UFILE *file, UChar ch, T t, Args... args)
     return do_match(file, ch, args...);
 }
 
-template<typename T, typename... Args>
+template <typename T, typename... Args>
 std::optional<int32_t> matches(UFILE *file, T t, Args... args)
 {
     auto ch = u_fgetc(file);
@@ -43,117 +41,176 @@ std::optional<int32_t> matches(UFILE *file, T t, Args... args)
 }
 
 static const std::map<icu::UnicodeString, Keyword::Kind> keyword_map = {
-    {"break",       Keyword::Kind::BREAK},
-    {"case",        Keyword::Kind::CASE},
-    {"chan",        Keyword::Kind::CHAN},
-    {"const",       Keyword::Kind::CONST},
-    {"continue",    Keyword::Kind::CONTINUE},
-    {"default",     Keyword::Kind::DEFAULT},
-    {"defer",       Keyword::Kind::DEFER},
-    {"else",        Keyword::Kind::ELSE},
-    {"fallthrough", Keyword::Kind::FALLTHROUGH},
-    {"for",         Keyword::Kind::FOR},
-    {"func",        Keyword::Kind::FUNC},
-    {"go",          Keyword::Kind::GO},
-    {"goto",        Keyword::Kind::GOTO},
-    {"if",          Keyword::Kind::IF},
-    {"import",      Keyword::Kind::IMPORT},
-    {"interface",   Keyword::Kind::INTERFACE},
-    {"map",         Keyword::Kind::MAP},
-    {"package",     Keyword::Kind::PACKAGE},
-    {"range",       Keyword::Kind::RANGE},
-    {"return",      Keyword::Kind::RETURN},
-    {"select",      Keyword::Kind::SELECT},
-    {"struct",      Keyword::Kind::STRUCT},
-    {"switch",      Keyword::Kind::SWITCH},
-    {"type",        Keyword::Kind::TYPE},
-    {"var",         Keyword::Kind::VAR},
+    { "break", Keyword::Kind::BREAK },
+    { "case", Keyword::Kind::CASE },
+    { "chan", Keyword::Kind::CHAN },
+    { "const", Keyword::Kind::CONST },
+    { "continue", Keyword::Kind::CONTINUE },
+    { "default", Keyword::Kind::DEFAULT },
+    { "defer", Keyword::Kind::DEFER },
+    { "else", Keyword::Kind::ELSE },
+    { "fallthrough", Keyword::Kind::FALLTHROUGH },
+    { "for", Keyword::Kind::FOR },
+    { "func", Keyword::Kind::FUNC },
+    { "go", Keyword::Kind::GO },
+    { "goto", Keyword::Kind::GOTO },
+    { "if", Keyword::Kind::IF },
+    { "import", Keyword::Kind::IMPORT },
+    { "interface", Keyword::Kind::INTERFACE },
+    { "map", Keyword::Kind::MAP },
+    { "package", Keyword::Kind::PACKAGE },
+    { "range", Keyword::Kind::RANGE },
+    { "return", Keyword::Kind::RETURN },
+    { "select", Keyword::Kind::SELECT },
+    { "struct", Keyword::Kind::STRUCT },
+    { "switch", Keyword::Kind::SWITCH },
+    { "type", Keyword::Kind::TYPE },
+    { "var", Keyword::Kind::VAR },
 };
 
 struct PunctuationParseNode {
     std::optional<Punctuation::Kind> stop;
     std::map<UChar, PunctuationParseNode> node;
 
-    PunctuationParseNode(std::optional<Punctuation::Kind> stop):
-        stop{stop}, node{{}} {}
-    PunctuationParseNode(std::map<UChar, PunctuationParseNode> node):
-        stop{std::nullopt}, node{node} {}
+    PunctuationParseNode(std::optional<Punctuation::Kind> stop)
+        : stop{ stop }, node{ {} }
+    {
+    }
+    PunctuationParseNode(std::map<UChar, PunctuationParseNode> node)
+        : stop{ std::nullopt }, node{ node }
+    {
+    }
     PunctuationParseNode(std::optional<Punctuation::Kind> stop,
-            std::map<UChar, PunctuationParseNode> node):
-        stop{stop}, node{node} {}
+                         std::map<UChar, PunctuationParseNode> node)
+        : stop{ stop }, node{ node }
+    {
+    }
 };
 
 static const std::map<UChar, PunctuationParseNode> punctuation_map = {
-    {U'+', PunctuationParseNode(Punctuation::Kind::PLUS, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::PLUS_EQUAL)},
-            {U'+', PunctuationParseNode(Punctuation::Kind::INCREMENT)},
-            })},
-    {U'-', PunctuationParseNode(Punctuation::Kind::MINUS, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::MINUS_EQUAL)},
-            {U'-', PunctuationParseNode(Punctuation::Kind::DECREMENT)},
-            })},
-    {U'*', PunctuationParseNode(Punctuation::Kind::STAR, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::STAR_EQUAL)},
-            })},
-    {U'/', PunctuationParseNode(Punctuation::Kind::SLASH, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::SLASH_EQUAL)},
-            })},
-    {U'%', PunctuationParseNode(Punctuation::Kind::PERCENT, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::MOD_EQUAL)},
-            })},
-    {U'&', PunctuationParseNode(Punctuation::Kind::AMP, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::AND_EQUAL)},
-            {U'&', PunctuationParseNode(Punctuation::Kind::BOOL_AND)},
-            {U'^', PunctuationParseNode(Punctuation::Kind::BITCLEAR, {
-                    {U'=', PunctuationParseNode(Punctuation::Kind::BITCLEAR_EQUAL)},
-                    })},
-            })},
-    {U'|', PunctuationParseNode(Punctuation::Kind::PIPE, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::OR_EQUAL)},
-            {U'|', PunctuationParseNode(Punctuation::Kind::BOOL_OR)},
-            })},
-    {U'^', PunctuationParseNode(Punctuation::Kind::CARAT, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::XOR_EQUAL)},
-            })},
-    {U'<', PunctuationParseNode(Punctuation::Kind::LESS_THAN, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::LESS_THAN_EQUAL)},
-            {U'-', PunctuationParseNode(Punctuation::Kind::RECEIVE)},
-            {U'<', PunctuationParseNode(Punctuation::Kind::LSHIFT, {
-                    {U'=', PunctuationParseNode(Punctuation::Kind::LSHIFT_EQUAL)},
-                    })},
-            })},
-    {U'>', PunctuationParseNode(Punctuation::Kind::GREATER_THAN, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::GREATER_THAN_EQUAL)},
-            {U'>', PunctuationParseNode(Punctuation::Kind::RSHIFT, {
-                    {U'=', PunctuationParseNode(Punctuation::Kind::RSHIFT_EQUAL)},
-                    })},
-            })},
-    {U'=', PunctuationParseNode(Punctuation::Kind::ASSIGNMENT, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::EQUAL)},
-            })},
-    {U'!', PunctuationParseNode(Punctuation::Kind::BANG, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::NOT_EQUAL)},
-            })},
-    {U':', PunctuationParseNode(Punctuation::Kind::COLON, {
-            {U'=', PunctuationParseNode(Punctuation::Kind::SHORT_DECLARATION)},
-            })},
-    {U'~', PunctuationParseNode(Punctuation::Kind::TILDE)},
-    {U'(', PunctuationParseNode(Punctuation::Kind::LPAREN)},
-    {U')', PunctuationParseNode(Punctuation::Kind::RPAREN)},
-    {U'[', PunctuationParseNode(Punctuation::Kind::LBRACKET)},
-    {U']', PunctuationParseNode(Punctuation::Kind::RBRACKET)},
-    {U'{', PunctuationParseNode(Punctuation::Kind::LBRACE)},
-    {U'}', PunctuationParseNode(Punctuation::Kind::RBRACE)},
-    {U';', PunctuationParseNode(Punctuation::Kind::SEMICOLON)},
-    {U',', PunctuationParseNode(Punctuation::Kind::COMMA)},
-    {U'.', PunctuationParseNode(Punctuation::Kind::DOT, {
-            {U'.', PunctuationParseNode({
-                    {U'.', PunctuationParseNode(Punctuation::Kind::ELIPSES)},
-                    })},
-            })},
+    { U'+',
+      PunctuationParseNode(
+          Punctuation::Kind::PLUS,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::PLUS_EQUAL) },
+              { U'+', PunctuationParseNode(Punctuation::Kind::INCREMENT) },
+          }) },
+    { U'-',
+      PunctuationParseNode(
+          Punctuation::Kind::MINUS,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::MINUS_EQUAL) },
+              { U'-', PunctuationParseNode(Punctuation::Kind::DECREMENT) },
+          }) },
+    { U'*',
+      PunctuationParseNode(
+          Punctuation::Kind::STAR,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::STAR_EQUAL) },
+          }) },
+    { U'/',
+      PunctuationParseNode(
+          Punctuation::Kind::SLASH,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::SLASH_EQUAL) },
+          }) },
+    { U'%',
+      PunctuationParseNode(
+          Punctuation::Kind::PERCENT,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::MOD_EQUAL) },
+          }) },
+    { U'&',
+      PunctuationParseNode(
+          Punctuation::Kind::AMP,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::AND_EQUAL) },
+              { U'&', PunctuationParseNode(Punctuation::Kind::BOOL_AND) },
+              { U'^', PunctuationParseNode(
+                          Punctuation::Kind::BITCLEAR,
+                          {
+                              { U'=', PunctuationParseNode(
+                                          Punctuation::Kind::BITCLEAR_EQUAL) },
+                          }) },
+          }) },
+    { U'|', PunctuationParseNode(
+                Punctuation::Kind::PIPE,
+                {
+                    { U'=', PunctuationParseNode(Punctuation::Kind::OR_EQUAL) },
+                    { U'|', PunctuationParseNode(Punctuation::Kind::BOOL_OR) },
+                }) },
+    { U'^',
+      PunctuationParseNode(
+          Punctuation::Kind::CARAT,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::XOR_EQUAL) },
+          }) },
+    { U'<',
+      PunctuationParseNode(
+          Punctuation::Kind::LESS_THAN,
+          {
+              { U'=',
+                PunctuationParseNode(Punctuation::Kind::LESS_THAN_EQUAL) },
+              { U'-', PunctuationParseNode(Punctuation::Kind::RECEIVE) },
+              { U'<', PunctuationParseNode(
+                          Punctuation::Kind::LSHIFT,
+                          {
+                              { U'=', PunctuationParseNode(
+                                          Punctuation::Kind::LSHIFT_EQUAL) },
+                          }) },
+          }) },
+    { U'>',
+      PunctuationParseNode(
+          Punctuation::Kind::GREATER_THAN,
+          {
+              { U'=',
+                PunctuationParseNode(Punctuation::Kind::GREATER_THAN_EQUAL) },
+              { U'>', PunctuationParseNode(
+                          Punctuation::Kind::RSHIFT,
+                          {
+                              { U'=', PunctuationParseNode(
+                                          Punctuation::Kind::RSHIFT_EQUAL) },
+                          }) },
+          }) },
+    { U'=', PunctuationParseNode(
+                Punctuation::Kind::ASSIGNMENT,
+                {
+                    { U'=', PunctuationParseNode(Punctuation::Kind::EQUAL) },
+                }) },
+    { U'!',
+      PunctuationParseNode(
+          Punctuation::Kind::BANG,
+          {
+              { U'=', PunctuationParseNode(Punctuation::Kind::NOT_EQUAL) },
+          }) },
+    { U':', PunctuationParseNode(
+                Punctuation::Kind::COLON,
+                {
+                    { U'=', PunctuationParseNode(
+                                Punctuation::Kind::SHORT_DECLARATION) },
+                }) },
+    { U'~', PunctuationParseNode(Punctuation::Kind::TILDE) },
+    { U'(', PunctuationParseNode(Punctuation::Kind::LPAREN) },
+    { U')', PunctuationParseNode(Punctuation::Kind::RPAREN) },
+    { U'[', PunctuationParseNode(Punctuation::Kind::LBRACKET) },
+    { U']', PunctuationParseNode(Punctuation::Kind::RBRACKET) },
+    { U'{', PunctuationParseNode(Punctuation::Kind::LBRACE) },
+    { U'}', PunctuationParseNode(Punctuation::Kind::RBRACE) },
+    { U';', PunctuationParseNode(Punctuation::Kind::SEMICOLON) },
+    { U',', PunctuationParseNode(Punctuation::Kind::COMMA) },
+    { U'.',
+      PunctuationParseNode(
+          Punctuation::Kind::DOT,
+          {
+              { U'.',
+                PunctuationParseNode({
+                    { U'.', PunctuationParseNode(Punctuation::Kind::ELIPSES) },
+                }) },
+          }) },
 };
 
-inline bool is_letter(uint16_t c) {
+inline bool is_letter(uint16_t c)
+{
     return u_isalpha(c) || (c == U'_');
 }
 
@@ -164,13 +221,13 @@ std::optional<Punctuation> consume_punctuation(UFILE *file)
     UChar ch;
 
     while ((ch = u_fgetc(file)) != U_EOF) {
-            const auto &node = mapping->find(ch);
-            if (node != mapping->end()) {
-                candidate = node->second.stop;
-                mapping = &node->second.node;
-            } else {
-                break;
-            }
+        const auto &node = mapping->find(ch);
+        if (node != mapping->end()) {
+            candidate = node->second.stop;
+            mapping = &node->second.node;
+        } else {
+            break;
+        }
     }
 
     if (ch != U_EOF)
@@ -186,7 +243,7 @@ std::optional<Punctuation> consume_punctuation(UFILE *file)
 std::optional<TokenVariant> consume_identifier(UFILE *file)
 {
     icu::UnicodeString ident;
-    
+
     auto c = u_fgetc(file);
     if (c == U_EOF || !is_letter(c)) {
         if (c != U_EOF)
@@ -212,20 +269,17 @@ std::optional<TokenVariant> consume_identifier(UFILE *file)
 }
 
 // Consumes digits from the file into the digits string
-// Returns the number of digits consumed and a bool indicating whether all digits were valid in radix
-// The actual radix read into the string is max(radix, 10)
-std::pair<uint32_t, bool> consume_digits(
-        UFILE *file,
-        icu::UnicodeString &digits,
-        uint8_t radix,
-        bool allow_starting_underscore,
-        bool last_was_underscore=false
-)
+// Returns the number of digits consumed and a bool indicating whether all
+// digits were valid in radix The actual radix read into the string is
+// max(radix, 10)
+std::pair<uint32_t, bool>
+consume_digits(UFILE *file, icu::UnicodeString &digits, uint8_t radix,
+               bool allow_starting_underscore, bool last_was_underscore = false)
 {
     UChar next = u_fgetc(file);
     if (next == U_EOF) {
         u_fungetc(next, file);
-        return {0, true};
+        return { 0, true };
     }
 
     auto effective_radix = std::max(radix, static_cast<uint8_t>(10));
@@ -235,7 +289,7 @@ std::pair<uint32_t, bool> consume_digits(
     bool underscore_ok = allow_starting_underscore && next == U'_';
     if (digit == -1 && !underscore_ok) {
         u_fungetc(next, file);
-        return {0, all_digits_in_radix};
+        return { 0, all_digits_in_radix };
     }
 
     all_digits_in_radix &= (underscore_ok || u_digit(next, radix) != -1);
@@ -268,33 +322,29 @@ std::pair<uint32_t, bool> consume_digits(
 
     if (next != U_EOF)
         u_fungetc(next, file);
-    
+
     if (last_was_underscore)
         u_fungetc(U'_', file);
 
-    return {digits_consumed, all_digits_in_radix};
+    return { digits_consumed, all_digits_in_radix };
 }
 
-std::optional<FloatLiteral> consume_float_literal_with_exponent(
-        UFILE *file,
-        icu::UnicodeString &digits,
-        uint8_t radix,
-        std::optional<UChar> has_exponent
-)
+std::optional<FloatLiteral>
+consume_float_literal_with_exponent(UFILE *file, icu::UnicodeString &digits,
+                                    uint8_t radix,
+                                    std::optional<UChar> has_exponent)
 {
-    FloatLiteral literal(
-            digits,
-            icu::UnicodeString("", "utf-8"),
-            radix
-            );
+    FloatLiteral literal(digits, icu::UnicodeString("", "utf-8"), radix);
 
     if (has_exponent.has_value()) {
         literal.exponent_char = has_exponent;
         auto optional_sign = matches(file, U'+', U'-');
-        literal.negative = optional_sign.has_value() && (*optional_sign == U'-');
+        literal.negative =
+            optional_sign.has_value() && (*optional_sign == U'-');
 
         // Exponent radix is always 10
-        auto [exponent_digits, all_in_radix] = consume_digits(file, literal.exponent, 10, false);
+        auto [exponent_digits, all_in_radix] =
+            consume_digits(file, literal.exponent, 10, false);
         // FIXME: Do something about it?
         if (exponent_digits == 0 || !all_in_radix)
             return std::nullopt;
@@ -303,12 +353,9 @@ std::optional<FloatLiteral> consume_float_literal_with_exponent(
     return literal;
 }
 
-std::optional<FloatLiteral> consume_float_literal_after_decimal(
-        UFILE *file,
-        icu::UnicodeString &digits,
-        uint8_t radix,
-        bool allow_empty
-)
+std::optional<FloatLiteral>
+consume_float_literal_after_decimal(UFILE *file, icu::UnicodeString &digits,
+                                    uint8_t radix, bool allow_empty)
 {
     consume_digits(file, digits, radix, false);
     if (false) {
@@ -328,7 +375,8 @@ std::optional<FloatLiteral> consume_float_literal_after_decimal(
         has_exponent = matches(file, U'p', U'P');
     }
 
-    return consume_float_literal_with_exponent(file, digits, radix, has_exponent);
+    return consume_float_literal_with_exponent(file, digits, radix,
+                                               has_exponent);
 }
 
 std::optional<TokenVariant> consume_numeric_literal(UFILE *file)
@@ -399,7 +447,8 @@ std::optional<TokenVariant> consume_numeric_literal(UFILE *file)
         }
 
         digits.append(*is_float);
-        auto literal = consume_float_literal_after_decimal(file, digits, radix, true);
+        auto literal =
+            consume_float_literal_after_decimal(file, digits, radix, true);
 
         if (literal && matches(file, U'i')) {
             return ImaginaryLiteral(*literal);
@@ -424,7 +473,8 @@ std::optional<TokenVariant> consume_numeric_literal(UFILE *file)
             return std::nullopt;
         }
 
-        auto literal = consume_float_literal_with_exponent(file, digits, radix, has_exponent);
+        auto literal = consume_float_literal_with_exponent(file, digits, radix,
+                                                           has_exponent);
 
         if (literal && matches(file, U'i')) {
             return ImaginaryLiteral(*literal);
@@ -437,10 +487,7 @@ std::optional<TokenVariant> consume_numeric_literal(UFILE *file)
         return std::nullopt;
     }
 
-    IntLiteral literal(
-            digits,
-            radix
-            );
+    IntLiteral literal(digits, radix);
 
     if (matches(file, U'i')) {
         // Backwards compat clause
@@ -454,33 +501,23 @@ std::optional<TokenVariant> consume_numeric_literal(UFILE *file)
     return literal;
 }
 
-std::optional<RuneLiteral> consume_rune_literal_character(UFILE *file, bool is_string_literal)
+std::optional<RuneLiteral>
+consume_rune_literal_character(UFILE *file, bool is_string_literal)
 {
     static const std::map<UChar, UChar> escaped_values_char = {
-        {U'a', U'\a'},
-        {U'b', U'\b'},
-        {U'f', U'\f'},
-        {U'n', U'\n'},
-        {U'r', U'\r'},
-        {U't', U'\t'},
-        {U'v', U'\v'},
-        {U'\\', U'\\'},
-        {U'\'', U'\''},
+        { U'a', U'\a' }, { U'b', U'\b' },  { U'f', U'\f' },
+        { U'n', U'\n' }, { U'r', U'\r' },  { U't', U'\t' },
+        { U'v', U'\v' }, { U'\\', U'\\' }, { U'\'', U'\'' },
     };
 
     static const std::map<UChar, UChar> escaped_values_string = {
-        {U'a', U'\a'},
-        {U'b', U'\b'},
-        {U'f', U'\f'},
-        {U'n', U'\n'},
-        {U'r', U'\r'},
-        {U't', U'\t'},
-        {U'v', U'\v'},
-        {U'\\', U'\\'},
-        {U'\"', U'\"'},
+        { U'a', U'\a' }, { U'b', U'\b' },  { U'f', U'\f' },
+        { U'n', U'\n' }, { U'r', U'\r' },  { U't', U'\t' },
+        { U'v', U'\v' }, { U'\\', U'\\' }, { U'\"', U'\"' },
     };
 
-    const auto &escaped_values = is_string_literal ? escaped_values_string : escaped_values_char;
+    const auto &escaped_values =
+        is_string_literal ? escaped_values_string : escaped_values_char;
 
     if (!matches(file, U'\\')) {
         UChar rune = u_fgetc(file);
@@ -488,7 +525,8 @@ std::optional<RuneLiteral> consume_rune_literal_character(UFILE *file, bool is_s
     }
 
     if (auto u = matches(file, U'u', U'U')) {
-        auto kind = *u == U'U' ? RuneLiteral::Kind::BIG_U : RuneLiteral::Kind::LITTLE_U;
+        auto kind =
+            *u == U'U' ? RuneLiteral::Kind::BIG_U : RuneLiteral::Kind::LITTLE_U;
 
         UChar rune = 0;
         for (int i = 0; i < 4; ++i) {
@@ -660,10 +698,10 @@ TokenStream consume_tokens(UFILE *file)
 
         if (auto token = consume_punctuation(file)) {
             insert_semi = token->kind == PunctuationKind::INCREMENT ||
-                token->kind == PunctuationKind::DECREMENT ||
-                token->kind == PunctuationKind::RPAREN ||
-                token->kind == PunctuationKind::RBRACE ||
-                token->kind == PunctuationKind::RBRACKET;
+                          token->kind == PunctuationKind::DECREMENT ||
+                          token->kind == PunctuationKind::RPAREN ||
+                          token->kind == PunctuationKind::RBRACE ||
+                          token->kind == PunctuationKind::RBRACKET;
 
             tokens.push_back(*token);
             continue;
@@ -684,11 +722,11 @@ TokenStream consume_tokens(UFILE *file)
         if (auto token = consume_identifier(file)) {
             const auto &base = token_base(*token);
             insert_semi = base.is_keyword(KeywordKind::BREAK) ||
-                base.is_keyword(KeywordKind::CONTINUE) ||
-                base.is_keyword(KeywordKind::FALLTHROUGH) ||
-                base.is_keyword(KeywordKind::RETURN) ||
-                base.is_identifier();
-            
+                          base.is_keyword(KeywordKind::CONTINUE) ||
+                          base.is_keyword(KeywordKind::FALLTHROUGH) ||
+                          base.is_keyword(KeywordKind::RETURN) ||
+                          base.is_identifier();
+
             tokens.push_back(*token);
             continue;
         }
@@ -709,7 +747,8 @@ boost::multiprecision::uint256_t IntLiteral::value() const
     for (int i = 0; i < lit.length(); ++i) {
         UChar ch = lit.charAt(i);
         auto digit = u_digit(ch, radix);
-        if (digit < 0) continue;
+        if (digit < 0)
+            continue;
 
         value *= radix;
         value += digit;
@@ -720,35 +759,23 @@ boost::multiprecision::uint256_t IntLiteral::value() const
 
 std::ostream &Identifier::operator<<(std::ostream &os) const
 {
-    os << "Identifier(ident: "
-        << this->ident
-        << ")";
+    os << "Identifier(ident: " << this->ident << ")";
     return os;
 }
 
 std::ostream &IntLiteral::operator<<(std::ostream &os) const
 {
-    os << "IntLiteral(lit: "
-        << this->lit
-        << ", value: "
-        << this->value()
-        << ", radix: "
-        << static_cast<unsigned int>(this->radix)
-        << ")";
+    os << "IntLiteral(lit: " << this->lit << ", value: " << this->value()
+       << ", radix: " << static_cast<unsigned int>(this->radix) << ")";
     return os;
 }
 
 std::ostream &FloatLiteral::operator<<(std::ostream &os) const
 {
-    os << "FloatLiteral(mantissa: "
-        << this->mantissa
-        << ", exponent: "
-        << this->exponent
-        << ", radix: "
-        << static_cast<unsigned int>(this->radix)
-        << ", negative_exponent: "
-        << (this->negative ? "true" : "false")
-        << ")";
+    os << "FloatLiteral(mantissa: " << this->mantissa
+       << ", exponent: " << this->exponent
+       << ", radix: " << static_cast<unsigned int>(this->radix)
+       << ", negative_exponent: " << (this->negative ? "true" : "false") << ")";
     return os;
 }
 
@@ -778,13 +805,11 @@ std::ostream &Keyword::operator<<(std::ostream &os) const
 std::ostream &Punctuation::operator<<(std::ostream &os) const
 {
     static const std::string punctuation_map[] = {
-        "+", "-", "*", "/", "%", "&", "|", "^",
-        "<<", ">>", "&^", "+=", "-=", "*=", "/=",
-        "%=", "&=", "|=", "^=", "<<=", ">>=",
-        "&^=", "&&", "||", "<-", "++", "--",
-        "==", "<", ">", "=", "!", "~", "!=",
-        "<=", ">=", ":=", "...", "(", ")", "[",
-        "]", "{", "}", ",", ";", ".", ":",
+        "+",   "-",   "*",  "/",  "%",  "&",  "|",  "^",   "<<", ">>",
+        "&^",  "+=",  "-=", "*=", "/=", "%=", "&=", "|=",  "^=", "<<=",
+        ">>=", "&^=", "&&", "||", "<-", "++", "--", "==",  "<",  ">",
+        "=",   "!",   "~",  "!=", "<=", ">=", ":=", "...", "(",  ")",
+        "[",   "]",   "{",  "}",  ",",  ";",  ".",  ":",
     };
 
     os << "Punctuation(kind: ";
@@ -829,7 +854,8 @@ std::ostream &StringLiteral::operator<<(std::ostream &os) const
             os << icu::UnicodeString(rune.rune);
         } else if (rune.kind == RuneLiteral::Kind::ESCAPED_CHAR) {
             os << icu::UnicodeString(rune.rune);
-        } else if (rune.kind == RuneLiteral::Kind::LITTLE_U || rune.kind == RuneLiteral::Kind::BIG_U) {
+        } else if (rune.kind == RuneLiteral::Kind::LITTLE_U ||
+                   rune.kind == RuneLiteral::Kind::BIG_U) {
             auto u = rune.kind == RuneLiteral::Kind::LITTLE_U ? 'u' : 'U';
             os << "\\";
             os << u;
@@ -864,6 +890,6 @@ std::ostream &operator<<(std::ostream &os, const TokenVariant &v)
     return os;
 }
 
-}
+} // namespace tokens
 
-}
+} // namespace goop

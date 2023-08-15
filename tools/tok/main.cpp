@@ -1,11 +1,12 @@
+#include "tokens.h"
 #include <cstdio>
 #include <iostream>
-#include <unicode/ustream.h>
 #include <unicode/unistr.h>
 #include <unicode/ustdio.h>
-#include "tokens.h"
+#include <unicode/ustream.h>
 
-int main() {
+int main()
+{
     auto *u_stdin = u_finit(stdin, nullptr, nullptr);
 
     auto tokens = goop::tokens::consume_tokens(u_stdin);

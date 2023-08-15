@@ -1,14 +1,12 @@
+#include "parser_type.h"
 #include "parser.h"
 #include "parser_common.h"
-#include "parser_type.h"
 #include "tokens.h"
 #include <optional>
 
-namespace goop
-{
+namespace goop {
 
-namespace parse
-{
+namespace parse {
 
 std::optional<TypeName> parse_type_name(tokens::TokenStream &ts)
 {
@@ -29,7 +27,8 @@ std::optional<TypeName> parse_type_name(tokens::TokenStream &ts)
     return TypeName(*name_or_package);
 }
 
-std::optional<std::unique_ptr<TypeList>> parse_type_list(tokens::TokenStream &ts)
+std::optional<std::unique_ptr<TypeList>>
+parse_type_list(tokens::TokenStream &ts)
 {
     std::vector<Type> type_list;
 
@@ -48,7 +47,8 @@ std::optional<std::unique_ptr<TypeList>> parse_type_list(tokens::TokenStream &ts
     return std::make_unique<TypeList>(std::move(type_list));
 }
 
-std::optional<std::unique_ptr<TypeList>> parse_type_args(tokens::TokenStream &ts)
+std::optional<std::unique_ptr<TypeList>>
+parse_type_args(tokens::TokenStream &ts)
 {
     if (!ts.match_punctuation(tokens::Punctuation::Kind::LBRACKET)) {
         return std::nullopt;
@@ -62,7 +62,8 @@ std::optional<std::unique_ptr<TypeList>> parse_type_args(tokens::TokenStream &ts
     return std::nullopt;
 }
 
-std::optional<NamedType> parse_named_type(tokens::TokenStream &ts) {
+std::optional<NamedType> parse_named_type(tokens::TokenStream &ts)
+{
     if (auto type_name = parse_type_name(ts)) {
         if (auto type_args = parse_type_args(ts)) {
             return NamedType(*type_name, std::move(*type_args));
@@ -208,7 +209,7 @@ std::optional<StructFieldDecl> parse_struct_field_decl(tokens::TokenStream &ts)
             return std::nullopt;
         }
 
-        StructFieldDecl::EmbeddedField ef { true, std::move(*named_type) };
+        StructFieldDecl::EmbeddedField ef{ true, std::move(*named_type) };
         return StructFieldDecl(std::move(ef), tag);
     }
 
@@ -233,7 +234,8 @@ std::optional<StructFieldDecl> parse_struct_field_decl(tokens::TokenStream &ts)
             return std::nullopt;
         }
 
-        StructFieldDecl::Field field { *ident_list, std::make_unique<Type>(std::move(*type)) };
+        StructFieldDecl::Field field{ *ident_list, std::make_unique<Type>(
+                                                       std::move(*type)) };
         return StructFieldDecl(std::move(field), tag);
     }
 
@@ -247,7 +249,8 @@ std::optional<StructFieldDecl> parse_struct_field_decl(tokens::TokenStream &ts)
             return std::nullopt;
         }
 
-        StructFieldDecl::Field field { *ident_list, std::make_unique<Type>(std::move(*type)) };
+        StructFieldDecl::Field field{ *ident_list, std::make_unique<Type>(
+                                                       std::move(*type)) };
         return StructFieldDecl(std::move(field), tag);
     }
 
@@ -264,7 +267,7 @@ std::optional<StructFieldDecl> parse_struct_field_decl(tokens::TokenStream &ts)
         return std::nullopt;
     }
 
-    StructFieldDecl::EmbeddedField ef { false, std::move(*named_type) };
+    StructFieldDecl::EmbeddedField ef{ false, std::move(*named_type) };
     return StructFieldDecl(std::move(ef), tag);
 }
 
@@ -352,10 +355,8 @@ std::optional<MapType> parse_map_type(tokens::TokenStream &ts)
         return std::nullopt;
     }
 
-    return MapType(
-            std::make_unique<Type>(std::move(*key)),
-            std::make_unique<Type>(std::move(*value))
-            );
+    return MapType(std::make_unique<Type>(std::move(*key)),
+                   std::make_unique<Type>(std::move(*value)));
 }
 
 std::optional<ChannelType> parse_channel_type(tokens::TokenStream &ts)
@@ -368,10 +369,9 @@ std::optional<ChannelType> parse_channel_type(tokens::TokenStream &ts)
             return std::nullopt;
         }
 
-        return ChannelType(
-                recv ? ChannelType::Direction::RECV : ChannelType::Direction::BIDI,
-                std::make_unique<Type>(std::move(*type))
-                );
+        return ChannelType(recv ? ChannelType::Direction::RECV :
+                                  ChannelType::Direction::BIDI,
+                           std::make_unique<Type>(std::move(*type)));
     }
 
     if (ts.match_punctuation(tokens::Punctuation::Kind::RECEIVE)) {
@@ -380,13 +380,14 @@ std::optional<ChannelType> parse_channel_type(tokens::TokenStream &ts)
         }
 
         if (auto type = parse_type(ts)) {
-            return ChannelType(ChannelType::Direction::SEND, std::make_unique<Type>(std::move(*type)));
+            return ChannelType(ChannelType::Direction::SEND,
+                               std::make_unique<Type>(std::move(*type)));
         }
     }
 
     return std::nullopt;
 }
 
-}
+} // namespace parse
 
-}
+} // namespace goop

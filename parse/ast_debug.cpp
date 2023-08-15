@@ -2,19 +2,19 @@
 #include "parser_common.h"
 #include "parser_type.h"
 
-namespace goop
-{
+namespace goop {
 
-namespace parse
-{
+namespace parse {
 
-static inline void indent(std::ostream &os, int depth) {
+static inline void indent(std::ostream &os, int depth)
+{
     for (int i = 0; i < depth; ++i) {
         os << "\t";
     }
 }
 
-void PackageClause::print(std::ostream &os, int depth) const {
+void PackageClause::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "PackageClause [ package = ";
     os << package_name;
@@ -22,7 +22,8 @@ void PackageClause::print(std::ostream &os, int depth) const {
     os << std::endl;
 };
 
-void ImportSpec::print(std::ostream &os, int depth) const {
+void ImportSpec::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "ImportSpec [ path = ";
     os << path;
@@ -38,7 +39,8 @@ void ImportSpec::print(std::ostream &os, int depth) const {
     os << " ]" << std::endl;
 }
 
-void ImportDecl::print(std::ostream &os, int depth) const {
+void ImportDecl::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "ImportDecl [" << std::endl;
 
@@ -50,7 +52,8 @@ void ImportDecl::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void TopLevelDecl::print(std::ostream &os, int depth) const {
+void TopLevelDecl::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
 
     os << "TopLevelDecl [" << std::endl;
@@ -60,7 +63,8 @@ void TopLevelDecl::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void SourceFile::print(std::ostream &os, int depth) const {
+void SourceFile::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
 
     os << "SourceFile [" << std::endl;
@@ -79,7 +83,8 @@ void SourceFile::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void IdentifierList::print(std::ostream &os, int depth) const {
+void IdentifierList::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "IdentifierList [" << std::endl;
 
@@ -92,7 +97,8 @@ void IdentifierList::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void TypeName::print(std::ostream &os, int depth) const {
+void TypeName::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "TypeName [ package = ";
     if (package_name) {
@@ -105,7 +111,8 @@ void TypeName::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void NamedType::print(std::ostream &os, int depth) const {
+void NamedType::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "NamedType [" << std::endl;
 
@@ -119,24 +126,26 @@ void NamedType::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void Type::print(std::ostream &os, int depth) const {
+void Type::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "Type [" << std::endl;
 
-    std::visit(tokens::TokenStream::overloaded {
-            [&](const TypeLit &a) {
-            reinterpret_cast<const ASTNode*>(&a)->print(os, depth + 1);
-            },
-            [&](const NamedType &a) {
-            a.print(os, depth + 1);
-            },
-            }, inner);
+    std::visit(tokens::TokenStream::overloaded{
+                   [&](const TypeLit &a) {
+                       reinterpret_cast<const ASTNode *>(&a)->print(os,
+                                                                    depth + 1);
+                   },
+                   [&](const NamedType &a) { a.print(os, depth + 1); },
+               },
+               inner);
 
     indent(os, depth);
     os << "]" << std::endl;
 }
 
-void TypeDef::print(std::ostream &os, int depth) const {
+void TypeDef::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "TypeDef [" << std::endl;
 
@@ -144,7 +153,8 @@ void TypeDef::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void AliasDecl::print(std::ostream &os, int depth) const {
+void AliasDecl::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "AliasDecl [ ident = " << id;
     os << ", ty =" << std::endl;
@@ -155,7 +165,8 @@ void AliasDecl::print(std::ostream &os, int depth) const {
     os << "]" << std::endl;
 }
 
-void TypeDecl::print(std::ostream &os, int depth) const {
+void TypeDecl::print(std::ostream &os, int depth) const
+{
     indent(os, depth);
     os << "TypeDecl [" << std::endl;
 
@@ -173,24 +184,23 @@ void StructFieldDecl::print(std::ostream &os, int depth) const
     os << "StructFieldDecl [" << std::endl;
 
     indent(os, depth + 1);
-    std::visit(tokens::TokenStream::overloaded {
-            [&](const EmbeddedField &ef) {
-                os << "EmbeddedField [ ptr: ";
-                os << (ef.pointer ? "true" : "false") << std::endl;
+    std::visit(tokens::TokenStream::overloaded{
+                   [&](const EmbeddedField &ef) {
+                       os << "EmbeddedField [ ptr: ";
+                       os << (ef.pointer ? "true" : "false") << std::endl;
 
-                ef.type.print(os, depth + 2);
-            },
-            [&](const Field &f) {
-                os << "Field [ idents = " << std::endl;
-                f.idents.print(os, depth + 2);
+                       ef.type.print(os, depth + 2);
+                   },
+                   [&](const Field &f) {
+                       os << "Field [ idents = " << std::endl;
+                       f.idents.print(os, depth + 2);
 
-                indent(os, depth + 1);
-                os << "ty = " << std::endl;
-                f.type->print(os, depth + 2);
-            },
-            },
-            inner
-            );
+                       indent(os, depth + 1);
+                       os << "ty = " << std::endl;
+                       f.type->print(os, depth + 2);
+                   },
+               },
+               inner);
 
     indent(os, depth + 1);
     os << "]";
@@ -199,7 +209,7 @@ void StructFieldDecl::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-void StructType::print(std::ostream &os, int depth) const 
+void StructType::print(std::ostream &os, int depth) const
 {
     indent(os, depth);
     os << "StructType [" << std::endl;
@@ -212,7 +222,7 @@ void StructType::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-void PointerType::print(std::ostream &os, int depth) const 
+void PointerType::print(std::ostream &os, int depth) const
 {
     indent(os, depth);
     os << "PointerType [ inner: " << std::endl;
@@ -223,7 +233,7 @@ void PointerType::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-void SliceType::print(std::ostream &os, int depth) const 
+void SliceType::print(std::ostream &os, int depth) const
 {
     indent(os, depth);
     os << "SliceType [ inner: " << std::endl;
@@ -234,7 +244,7 @@ void SliceType::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-void MapType::print(std::ostream &os, int depth) const 
+void MapType::print(std::ostream &os, int depth) const
 {
     indent(os, depth);
     os << "MapType [ key: " << std::endl;
@@ -250,21 +260,21 @@ void MapType::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-void ChannelType::print(std::ostream &os, int depth) const 
+void ChannelType::print(std::ostream &os, int depth) const
 {
     indent(os, depth);
     os << "ChannelType [ direction: ";
 
     switch (direction) {
-        case Direction::SEND:
-            os << "SEND";
-            break;
-        case Direction::RECV:
-            os << "RECV";
-            break;
-        case Direction::BIDI:
-            os << "BIDI";
-            break;
+    case Direction::SEND:
+        os << "SEND";
+        break;
+    case Direction::RECV:
+        os << "RECV";
+        break;
+    case Direction::BIDI:
+        os << "BIDI";
+        break;
     }
 
     os << ", inner: " << std::endl;
@@ -288,6 +298,6 @@ void TypeList::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-}
+} // namespace parse
 
-}
+} // namespace goop

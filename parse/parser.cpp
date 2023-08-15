@@ -2,11 +2,9 @@
 #include "parser_type.h"
 #include "tokens.h"
 
-namespace goop
-{
+namespace goop {
 
-namespace parse
-{
+namespace parse {
 
 std::optional<PackageClause> parse_package_clause(tokens::TokenStream &ts)
 {
@@ -116,6 +114,6 @@ std::optional<TopLevelDecl> parse_top_level_decl(tokens::TokenStream &ts)
     return std::nullopt;
 }
 
-}
+} // namespace parse
 
-}
+} // namespace goop
