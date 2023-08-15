@@ -25,8 +25,12 @@ find_package(Boost REQUIRED)
 find_package(ICU COMPONENTS data io uc tu REQUIRED)
 
 add_library(goop-parse 
-    parse/parser.cpp parse/tokens.cpp
-    parse/parser_type.cpp)
+    parse/tokens.cpp
+    parse/parser.cpp
+    parse/parser_type.cpp
+    parse/parser_common.cpp
+    parse/ast_debug.cpp
+    )
 target_include_directories(goop-parse PUBLIC parse)
 target_include_directories(goop-parse PUBLIC ${ICU_INCLUDE_DIRS})
 target_link_libraries(goop-parse ${ICU_LIBRARIES})
@@ -38,5 +42,8 @@ target_link_libraries(goop goop-parse)
 
 add_executable(goop-tok tools/tok/main.cpp)
 target_link_libraries(goop-tok PUBLIC goop-parse)
+
+add_executable(goop-ast tools/ast/main.cpp)
+target_link_libraries(goop-ast PUBLIC goop-parse)
 
 add_subdirectory(test)

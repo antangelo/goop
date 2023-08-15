@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "parser_type.h"
 #include "tokens.h"
 
 namespace goop
@@ -19,13 +20,39 @@ std::optional<PackageClause> parse_package_clause(tokens::TokenStream &ts)
         return PackageClause(*package_name);
     }
 
-    ts.unget(*kw);
     return std::nullopt;
 }
 
 std::optional<SourceFile> parse_source_file(tokens::TokenStream &ts)
 {
-    return std::nullopt;
+    auto pkg = parse_package_clause(ts);
+    if (!pkg) {
+        return std::nullopt;
+    }
+
+    if (!ts.match_punctuation(tokens::Punctuation::Kind::SEMICOLON)) {
+        return std::nullopt;
+    }
+
+    std::vector<ImportDecl> imports;
+    while (auto imp = parse_import_decl(ts)) {
+        if (!ts.match_punctuation(tokens::Punctuation::Kind::SEMICOLON)) {
+            return std::nullopt;
+        }
+
+        imports.push_back(*imp);
+    }
+
+    std::vector<TopLevelDecl> decls;
+    while (auto decl = parse_top_level_decl(ts)) {
+        if (!ts.match_punctuation(tokens::Punctuation::Kind::SEMICOLON)) {
+            return std::nullopt;
+        }
+
+        decls.push_back(std::move(*decl));
+    }
+
+    return SourceFile(*pkg, imports, std::move(decls));
 }
 
 std::optional<ImportSpec> parse_import_spec(tokens::TokenStream &ts)
@@ -60,7 +87,7 @@ std::optional<ImportDecl> parse_import_decl(tokens::TokenStream &ts)
         while (auto spec = parse_import_spec(ts)) {
             import_specs.push_back(*spec);
 
-            if (!ts.match_punctuation(tokens::Punctuation::SEMICOLON)) {
+            if (!ts.match_punctuation(tokens::Punctuation::Kind::SEMICOLON)) {
                 break;
             }
         }
@@ -76,6 +103,16 @@ std::optional<ImportDecl> parse_import_decl(tokens::TokenStream &ts)
     }
 
     ts.unget(*kw_import);
+    return std::nullopt;
+}
+
+std::optional<TopLevelDecl> parse_top_level_decl(tokens::TokenStream &ts)
+{
+    if (auto type_decl = parse_type_decl(ts)) {
+        auto tld = std::make_unique<TypeDecl>(std::move(*type_decl));
+        return TopLevelDecl(std::move(tld));
+    }
+
     return std::nullopt;
 }
 

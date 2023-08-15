@@ -21,107 +21,136 @@ namespace goop
 namespace tokens
 {
 
+enum KeywordKind {
+    BREAK,
+    CASE,
+    CHAN,
+    CONST,
+    CONTINUE,
+    DEFAULT,
+    DEFER,
+    ELSE,
+    FALLTHROUGH,
+    FOR,
+    FUNC,
+    GO,
+    GOTO,
+    IF,
+    IMPORT,
+    INTERFACE,
+    MAP,
+    PACKAGE,
+    RANGE,
+    RETURN,
+    SELECT,
+    STRUCT,
+    SWITCH,
+    TYPE,
+    VAR,
+};
+
+enum PunctuationKind {
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    PERCENT,
+    AMP,
+    PIPE,
+    CARAT,
+    LSHIFT,
+    RSHIFT,
+    BITCLEAR,
+    PLUS_EQUAL,
+    MINUS_EQUAL,
+    STAR_EQUAL,
+    SLASH_EQUAL,
+    MOD_EQUAL,
+    AND_EQUAL,
+    OR_EQUAL,
+    XOR_EQUAL,
+    LSHIFT_EQUAL,
+    RSHIFT_EQUAL,
+    BITCLEAR_EQUAL,
+    BOOL_AND,
+    BOOL_OR,
+    RECEIVE,
+    INCREMENT,
+    DECREMENT,
+    EQUAL,
+    LESS_THAN,
+    GREATER_THAN,
+    ASSIGNMENT,
+    BANG,
+    TILDE,
+    NOT_EQUAL,
+    LESS_THAN_EQUAL,
+    GREATER_THAN_EQUAL,
+    SHORT_DECLARATION,
+    ELIPSES,
+    LPAREN,
+    RPAREN,
+    LBRACKET,
+    RBRACKET,
+    LBRACE,
+    RBRACE,
+    COMMA,
+    SEMICOLON,
+    DOT,
+    COLON,
+};
+
 struct Token {
     virtual std::ostream &operator<<(std::ostream &) const = 0;
+    virtual bool is_keyword(KeywordKind) const {
+        return false;
+    }
+
+    virtual bool is_punctuation(PunctuationKind) const {
+        return false;
+    }
+
+    virtual bool is_identifier() const {
+        return false;
+    }
+
+    virtual bool is_comment() const {
+        return false;
+    }
 };
 
 struct Keyword final : public Token {
-    enum Kind {
-        BREAK,
-        CASE,
-        CHAN,
-        CONST,
-        CONTINUE,
-        DEFAULT,
-        DEFER,
-        ELSE,
-        FALLTHROUGH,
-        FOR,
-        FUNC,
-        GO,
-        GOTO,
-        IF,
-        IMPORT,
-        INTERFACE,
-        MAP,
-        PACKAGE,
-        RANGE,
-        RETURN,
-        SELECT,
-        STRUCT,
-        SWITCH,
-        TYPE,
-        VAR,
-    };
-
+    using Kind = KeywordKind;
     Kind kind;
 
     Keyword(Kind kind): kind{kind} {}
     std::ostream &operator<<(std::ostream &) const override;
+
+    bool is_keyword(KeywordKind kind) const override {
+        return this->kind == kind;
+    }
 };
 
 struct Punctuation final : public Token {
-    enum Kind {
-        PLUS,
-        MINUS,
-        STAR,
-        SLASH,
-        PERCENT,
-        AMP,
-        PIPE,
-        CARAT,
-        LSHIFT,
-        RSHIFT,
-        BITCLEAR,
-        PLUS_EQUAL,
-        MINUS_EQUAL,
-        STAR_EQUAL,
-        SLASH_EQUAL,
-        MOD_EQUAL,
-        AND_EQUAL,
-        OR_EQUAL,
-        XOR_EQUAL,
-        LSHIFT_EQUAL,
-        RSHIFT_EQUAL,
-        BITCLEAR_EQUAL,
-        BOOL_AND,
-        BOOL_OR,
-        RECEIVE,
-        INCREMENT,
-        DECREMENT,
-        EQUAL,
-        LESS_THAN,
-        GREATER_THAN,
-        ASSIGNMENT,
-        BANG,
-        TILDE,
-        NOT_EQUAL,
-        LESS_THAN_EQUAL,
-        GREATER_THAN_EQUAL,
-        SHORT_DECLARATION,
-        ELIPSES,
-        LPAREN,
-        RPAREN,
-        LBRACKET,
-        RBRACKET,
-        LBRACE,
-        RBRACE,
-        COMMA,
-        SEMICOLON,
-        DOT,
-        COLON,
-    };
-
+    using Kind = PunctuationKind;
     Kind kind;
 
     Punctuation(Kind kind): kind{kind} {}
     std::ostream &operator<<(std::ostream &) const override;
+
+    bool is_punctuation(PunctuationKind kind) const override {
+        return this->kind == kind;
+    }
 };
 
 struct Identifier final : public Token {
     icu::UnicodeString ident;
     Identifier(icu::UnicodeString ident): ident{ident} {}
     std::ostream &operator<<(std::ostream &) const override;
+
+    bool is_identifier() const override {
+        return true;
+    }
 };
 
 struct FloatLiteral final : public Token {
@@ -192,11 +221,22 @@ struct Comment final : public Token {
     Comment(icu::UnicodeString comment, bool multiline):
         comment{comment}, multiline{multiline} {}
     std::ostream &operator<<(std::ostream &) const override;
+
+    bool is_comment() const override {
+        return true;
+    }
 };
 
 typedef std::variant<Keyword, Identifier, IntLiteral,
         FloatLiteral, ImaginaryLiteral, Punctuation,
         RuneLiteral, StringLiteral, Comment> TokenVariant;
+
+static inline Token &token_base(TokenVariant &tok)
+{
+    return *std::visit([](auto &tv) {
+        return reinterpret_cast<Token *>(&tv);
+        }, tok);
+}
 
 class TokenStream {
     std::deque<TokenVariant> tokens;
@@ -209,6 +249,13 @@ class TokenStream {
         return tokens;
     }
 
+    void skip_comments()
+    {
+        while (!tokens.empty() && token_base(tokens.front()).is_comment()) {
+            tokens.pop_front();
+        }
+    }
+
     template<class... Ts>
     struct overloaded : Ts... { using Ts::operator()...; };
     template<class... Ts>
@@ -216,6 +263,9 @@ class TokenStream {
 
     template<std::derived_from<Token> T>
     std::optional<T> match_consume() {
+        skip_comments();
+        if (tokens.empty()) return std::nullopt;
+
         return std::visit(overloaded {
                 [&](T t) -> std::optional<T> { 
                     tokens.pop_front();
@@ -226,6 +276,9 @@ class TokenStream {
     }
 
     std::optional<Keyword> match_keyword(Keyword::Kind kind) {
+        skip_comments();
+        if (tokens.empty()) return std::nullopt;
+
         return std::visit(overloaded {
                 [&](Keyword keyword) -> std::optional<Keyword> {
                     if (keyword.kind == kind) {
@@ -240,6 +293,9 @@ class TokenStream {
     }
 
     std::optional<Punctuation> match_punctuation(Punctuation::Kind kind) {
+        skip_comments();
+        if (tokens.empty()) return std::nullopt;
+
         return std::visit(overloaded {
                 [&](Punctuation punct) -> std::optional<Punctuation> {
                     if (punct.kind == kind) {
@@ -258,7 +314,7 @@ class TokenStream {
     }
 };
 
-std::optional<TokenVariant> consume_punctuation(UFILE *file);
+std::optional<Punctuation> consume_punctuation(UFILE *file);
 std::optional<TokenVariant> consume_identifier(UFILE *file);
 std::optional<TokenVariant> consume_numeric_literal(UFILE *file);
 std::optional<RuneLiteral> consume_rune_literal(UFILE *file);
@@ -268,6 +324,7 @@ std::optional<Comment> consume_comment(UFILE *file);
 TokenStream consume_tokens(UFILE *file);
 
 std::ostream &operator<<(std::ostream &os, const TokenVariant &v);
+
 
 template<std::derived_from<Token> Tok>
 std::ostream &operator<<(std::ostream &os, const Tok &t)

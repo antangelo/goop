@@ -5,7 +5,6 @@
 #include <unicode/ustdio.h>
 #include "tokens.h"
 
-
 int main() {
     auto *u_stdin = u_finit(stdin, nullptr, nullptr);
 

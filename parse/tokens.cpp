@@ -157,7 +157,7 @@ inline bool is_letter(uint16_t c) {
     return u_isalpha(c) || (c == U'_');
 }
 
-std::optional<TokenVariant> consume_punctuation(UFILE *file)
+std::optional<Punctuation> consume_punctuation(UFILE *file)
 {
     const auto *mapping = &punctuation_map;
     std::optional<Punctuation::Kind> candidate;
@@ -632,14 +632,24 @@ std::optional<Comment> consume_comment(UFILE *file)
 TokenStream consume_tokens(UFILE *file)
 {
     std::deque<TokenVariant> tokens;
+    bool insert_semi = false;
 
     while (true) {
         auto peek = u_fgetc(file);
         if (peek == U_EOF)
             break;
 
+        if (peek == U'\n' || peek == U'}' || peek == U')' || peek == U']') {
+            if (insert_semi) {
+                tokens.push_back(Punctuation(Punctuation::Kind::SEMICOLON));
+                insert_semi = false;
+            }
+        }
+
         if (u_isspace(peek))
             continue;
+
+        insert_semi = false;
 
         u_fungetc(peek, file);
 
@@ -649,26 +659,42 @@ TokenStream consume_tokens(UFILE *file)
         }
 
         if (auto token = consume_punctuation(file)) {
+            insert_semi = token->kind == PunctuationKind::INCREMENT ||
+                token->kind == PunctuationKind::DECREMENT ||
+                token->kind == PunctuationKind::RPAREN ||
+                token->kind == PunctuationKind::RBRACE ||
+                token->kind == PunctuationKind::RBRACKET;
+
             tokens.push_back(*token);
             continue;
         }
 
         if (auto token = consume_string_literal(file)) {
+            insert_semi = true;
             tokens.push_back(*token);
             continue;
         }
 
         if (auto token = consume_rune_literal(file)) {
+            insert_semi = true;
             tokens.push_back(*token);
             continue;
         }
 
         if (auto token = consume_identifier(file)) {
+            const auto &base = token_base(*token);
+            insert_semi = base.is_keyword(KeywordKind::BREAK) ||
+                base.is_keyword(KeywordKind::CONTINUE) ||
+                base.is_keyword(KeywordKind::FALLTHROUGH) ||
+                base.is_keyword(KeywordKind::RETURN) ||
+                base.is_identifier();
+            
             tokens.push_back(*token);
             continue;
         }
 
         if (auto token = consume_numeric_literal(file)) {
+            insert_semi = true;
             tokens.push_back(*token);
             continue;
         }
