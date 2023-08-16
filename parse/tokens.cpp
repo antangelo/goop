@@ -677,7 +677,7 @@ TokenStream consume_tokens(UFILE *file)
         if (peek == U_EOF)
             break;
 
-        if (peek == U'\n' || peek == U'}' || peek == U')' || peek == U']') {
+        if (peek == U'\n') {
             if (insert_semi) {
                 tokens.push_back(Punctuation(Punctuation::Kind::SEMICOLON));
                 insert_semi = false;

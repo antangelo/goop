@@ -1,4 +1,5 @@
 #include "parser_type.h"
+#include "parser_expr.h"
 #include "parser.h"
 #include "parser_common.h"
 #include "tokens.h"
@@ -7,25 +8,6 @@
 namespace goop {
 
 namespace parse {
-
-std::optional<TypeName> parse_type_name(tokens::TokenStream &ts)
-{
-    auto name_or_package = ts.match_consume<tokens::Identifier>();
-    if (!name_or_package) {
-        return std::nullopt;
-    }
-
-    if (ts.match_punctuation(tokens::Punctuation::Kind::DOT)) {
-        auto name = ts.match_consume<tokens::Identifier>();
-        if (!name) {
-            return std::nullopt;
-        }
-
-        return TypeName(*name_or_package, *name);
-    }
-
-    return TypeName(*name_or_package);
-}
 
 std::optional<std::unique_ptr<TypeList>>
 parse_type_list(tokens::TokenStream &ts)
@@ -64,7 +46,7 @@ parse_type_args(tokens::TokenStream &ts)
 
 std::optional<NamedType> parse_named_type(tokens::TokenStream &ts)
 {
-    if (auto type_name = parse_type_name(ts)) {
+    if (auto type_name = parse_ident_or_qualified(ts)) {
         if (auto type_args = parse_type_args(ts)) {
             return NamedType(*type_name, std::move(*type_args));
         }
@@ -141,6 +123,8 @@ std::optional<TypeDecl> parse_type_decl(tokens::TokenStream &ts)
 
 std::optional<TypeDef> parse_type_def(tokens::TokenStream &ts)
 {
+    // TODO
+    (void)ts;
     return std::nullopt;
 }
 

@@ -29,6 +29,7 @@ add_library(goop-parse
     parse/parser.cpp
     parse/parser_type.cpp
     parse/parser_common.cpp
+    parse/parser_expr.cpp
     parse/ast_debug.cpp
     )
 target_include_directories(goop-parse PUBLIC parse)

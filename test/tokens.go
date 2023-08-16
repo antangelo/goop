@@ -46,7 +46,6 @@ func main() {
 // CHECK-NEXT: Punctuation(kind: {)
 // CHECK-NEXT: Identifier(ident: x)
 // CHECK-NEXT: Punctuation(kind: ++)
-// CHECK-NEXT: Punctuation(kind: ;)
 // CHECK-NEXT: Punctuation(kind: })
 // CHECK-NEXT: Punctuation(kind: ()
 // CHECK-NEXT: Punctuation(kind: ))

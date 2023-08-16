@@ -1,6 +1,8 @@
 #include "parser.h"
-#include "parser_type.h"
+#include "parser_common.h"
+#include "parser_expr.h"
 #include "tokens.h"
+#include <optional>
 
 namespace goop {
 
@@ -111,7 +113,59 @@ std::optional<TopLevelDecl> parse_top_level_decl(tokens::TokenStream &ts)
         return TopLevelDecl(std::move(tld));
     }
 
+    if (auto const_decl = parse_const_decl(ts)) {
+        auto tld = std::make_unique<ConstDecl>(std::move(*const_decl));
+        return TopLevelDecl(std::move(tld));
+    }
+
     return std::nullopt;
+}
+
+// TODO move
+
+std::optional<ConstSpec> parse_const_spec(tokens::TokenStream &ts)
+{
+    auto id = parse_identifier_list(ts);
+    if (!id) {
+        return std::nullopt;
+    }
+
+    std::optional<Type> ty{std::nullopt};
+    if (!ts.match_punctuation(tokens::Punctuation::Kind::ASSIGNMENT)) {
+        ty = parse_type(ts);
+        if (!ty) {
+            assert(!"FIXME");
+        }
+
+        if (!ts.match_punctuation(tokens::Punctuation::Kind::ASSIGNMENT)) {
+            return std::nullopt;
+        }
+    }
+
+    auto expr_list = parse_expression_list(ts);
+    return ConstSpec(std::move(*id), std::move(ty), std::move(expr_list));
+}
+
+std::optional<ConstDecl> parse_const_decl(tokens::TokenStream &ts)
+{
+    if (!ts.match_keyword(tokens::Keyword::Kind::CONST)) {
+        return std::nullopt;
+    }
+
+    std::vector<ConstSpec> specs;
+
+    if (ts.match_punctuation(tokens::Punctuation::Kind::LPAREN)) {
+        assert(!"Not implemented");
+    }
+
+    auto spec = parse_const_spec(ts);
+    if (!spec) {
+        return std::nullopt;
+    }
+
+    specs.push_back(std::move(*spec));
+
+    return ConstDecl(std::move(specs));
 }
 
 } // namespace parse

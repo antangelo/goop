@@ -2,6 +2,7 @@
 #define PARSE_PARSER_COMMON_H
 
 #include "tokens.h"
+#include <cassert>
 #include <ostream>
 
 namespace goop {
@@ -12,7 +13,16 @@ struct ASTNode {
     virtual ~ASTNode()
     {
     }
-    virtual void print(std::ostream &, int depth) const = 0;
+
+    virtual void print(std::ostream &, int) const
+    {
+        assert(!"ASTNode printed without overriding print");
+    }
+
+    virtual bool is_ambiguous() const
+    {
+        return false;
+    }
 };
 
 template <std::derived_from<ASTNode> T>
@@ -32,7 +42,26 @@ struct IdentifierList : public virtual ASTNode {
     void print(std::ostream &os, int depth) const override;
 };
 
+class IdentOrQualified : public virtual ASTNode {
+    std::optional<tokens::Identifier> package_name;
+    tokens::Identifier name;
+
+  public:
+    IdentOrQualified(tokens::Identifier name)
+        : package_name{ std::nullopt }, name{ name }
+    {
+    }
+
+    IdentOrQualified(tokens::Identifier package_name, tokens::Identifier name)
+        : package_name{ package_name }, name{ name }
+    {
+    }
+
+    void print(std::ostream &os, int depth) const override;
+};
+
 std::optional<IdentifierList> parse_identifier_list(tokens::TokenStream &ts);
+std::optional<IdentOrQualified> parse_ident_or_qualified(tokens::TokenStream &ts);
 
 } // namespace parse
 

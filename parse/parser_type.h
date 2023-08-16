@@ -1,10 +1,8 @@
 #ifndef PARSE_PARSER_TYPE_H
 #define PARSE_PARSER_TYPE_H
 
-#include "parser.h"
 #include "parser_common.h"
 #include "tokens.h"
-#include <cassert>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -13,35 +11,17 @@ namespace goop {
 
 namespace parse {
 
-class TypeName : public virtual ASTNode {
-    std::optional<tokens::Identifier> package_name;
-    tokens::Identifier name;
-
-  public:
-    TypeName(tokens::Identifier name)
-        : package_name{ std::nullopt }, name{ name }
-    {
-    }
-
-    TypeName(tokens::Identifier package_name, tokens::Identifier name)
-        : package_name{ package_name }, name{ name }
-    {
-    }
-
-    void print(std::ostream &os, int depth) const override;
-};
-
 class Type;
 class TypeList;
 
 struct NamedType {
-    TypeName name;
+    IdentOrQualified name;
     std::unique_ptr<TypeList> type_args;
 
-    NamedType(TypeName name) : name{ name }, type_args{ nullptr }
+    NamedType(IdentOrQualified name) : name{ name }, type_args{ nullptr }
     {
     }
-    NamedType(TypeName name, std::unique_ptr<TypeList> &&tl)
+    NamedType(IdentOrQualified name, std::unique_ptr<TypeList> &&tl)
         : name{ name }, type_args{ std::move(tl) }
     {
     }
@@ -49,11 +29,9 @@ struct NamedType {
     void print(std::ostream &os, int depth) const;
 };
 
+struct Expression;
 class ArrayType : public virtual ASTNode {
-    void print(std::ostream &os, int depth) const override
-    {
-        assert(false);
-    }
+    std::unique_ptr<Expression> len;
 };
 
 struct StructFieldDecl {
@@ -105,17 +83,9 @@ class PointerType : public virtual ASTNode {
 };
 
 class FunctionType : public virtual ASTNode {
-    void print(std::ostream &os, int depth) const override
-    {
-        assert(false);
-    }
 };
 
 class InterfaceType : public virtual ASTNode {
-    void print(std::ostream &os, int depth) const override
-    {
-        assert(false);
-    }
 };
 
 class SliceType : public virtual ASTNode {
@@ -195,6 +165,8 @@ struct TypeSpec : public virtual ASTNode {
     {
         return false;
     }
+
+    virtual ~TypeSpec() {}
 };
 
 class TypeDef : public virtual TypeSpec {
@@ -230,7 +202,6 @@ class TypeDecl : public virtual ASTNode {
     void print(std::ostream &os, int depth) const override;
 };
 
-std::optional<TypeName> parse_type_name(tokens::TokenStream &ts);
 std::optional<std::unique_ptr<TypeList>>
 parse_type_list(tokens::TokenStream &ts);
 std::optional<std::unique_ptr<TypeList>>

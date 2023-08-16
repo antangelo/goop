@@ -285,25 +285,19 @@ class TokenStream {
         }
     }
 
-    template <class... Ts> struct overloaded : Ts... {
-        using Ts::operator()...;
-    };
-    template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
     template <std::derived_from<Token> T> std::optional<T> match_consume()
     {
         skip_comments();
         if (tokens.empty())
             return std::nullopt;
 
-        return std::visit(overloaded{ [&](T t) -> std::optional<T> {
-                                         tokens.pop_front();
-                                         return t;
-                                     },
-                                      [](auto &) -> std::optional<T> {
-                                          return std::nullopt;
-                                      } },
-                          tokens.front());
+        if (auto *t = std::get_if<T>(&tokens.front())) {
+            T tok = *t;
+            tokens.pop_front();
+            return tok;
+        }
+
+        return std::nullopt;
     }
 
     std::optional<Keyword> match_keyword(Keyword::Kind kind)
@@ -312,18 +306,15 @@ class TokenStream {
         if (tokens.empty())
             return std::nullopt;
 
-        return std::visit(
-            overloaded{
-                [&](Keyword keyword) -> std::optional<Keyword> {
-                    if (keyword.kind == kind) {
-                        tokens.pop_front();
-                        return keyword;
-                    }
+        if (auto *k = std::get_if<Keyword>(&tokens.front())) {
+            if (k->kind == kind) {
+                Keyword kw = *k;
+                tokens.pop_front();
+                return kw;
+            }
+        }
 
-                    return std::nullopt;
-                },
-                [](auto &) -> std::optional<Keyword> { return std::nullopt; } },
-            tokens.front());
+        return std::nullopt;
     }
 
     std::optional<Punctuation> match_punctuation(Punctuation::Kind kind)
@@ -332,19 +323,25 @@ class TokenStream {
         if (tokens.empty())
             return std::nullopt;
 
-        return std::visit(
-            overloaded{ [&](Punctuation punct) -> std::optional<Punctuation> {
-                           if (punct.kind == kind) {
-                               tokens.pop_front();
-                               return punct;
-                           }
+        if (auto *p = std::get_if<Punctuation>(&tokens.front())) {
+            if (p->kind == kind) {
+                Punctuation punct = *p;
+                tokens.pop_front();
+                return punct;
+            }
+        }
 
-                           return std::nullopt;
-                       },
-                        [](auto &) -> std::optional<Punctuation> {
-                            return std::nullopt;
-                        } },
-            tokens.front());
+        return std::nullopt;
+    }
+
+    template<typename K, typename... Args>
+    std::optional<Punctuation> match_punctuation(K kind, Args... args)
+    {
+        if (auto match = match_punctuation(kind)) {
+            return match;
+        }
+
+        return match_punctuation(args...);
     }
 
     void unget(TokenVariant t)

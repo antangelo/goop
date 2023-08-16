@@ -1,15 +1,24 @@
 #include "parser.h"
 #include "parser_common.h"
 #include "parser_type.h"
+#include "parser_expr.h"
+#include "tokens.h"
+#include <cassert>
+#include <ostream>
 
 namespace goop {
 
 namespace parse {
 
+template <class... Ts> struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 static inline void indent(std::ostream &os, int depth)
 {
     for (int i = 0; i < depth; ++i) {
-        os << "\t";
+        os << "  ";
     }
 }
 
@@ -97,10 +106,10 @@ void IdentifierList::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
-void TypeName::print(std::ostream &os, int depth) const
+void IdentOrQualified::print(std::ostream &os, int depth) const
 {
     indent(os, depth);
-    os << "TypeName [ package = ";
+    os << "IdentOrQualified [ package = ";
     if (package_name) {
         os << *package_name;
     } else {
@@ -131,7 +140,7 @@ void Type::print(std::ostream &os, int depth) const
     indent(os, depth);
     os << "Type [" << std::endl;
 
-    std::visit(tokens::TokenStream::overloaded{
+    std::visit(overloaded{
                    [&](const TypeLit &a) {
                        reinterpret_cast<const ASTNode *>(&a)->print(os,
                                                                     depth + 1);
@@ -184,7 +193,7 @@ void StructFieldDecl::print(std::ostream &os, int depth) const
     os << "StructFieldDecl [" << std::endl;
 
     indent(os, depth + 1);
-    std::visit(tokens::TokenStream::overloaded{
+    std::visit(overloaded{
                    [&](const EmbeddedField &ef) {
                        os << "EmbeddedField [ ptr: ";
                        os << (ef.pointer ? "true" : "false") << std::endl;
@@ -292,6 +301,224 @@ void TypeList::print(std::ostream &os, int depth) const
 
     for (const auto &t : types) {
         t.print(os, depth + 1);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void ExpressionList::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "ExpressionList [" << std::endl;
+
+    for (const auto &e : exps) {
+        e->print(os, depth + 1);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void BasicLiteral::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "BasicLiteral [";
+
+    std::visit(overloaded {
+            [&](const auto &tok) {
+            reinterpret_cast<const tokens::Token *>(&tok)->operator<<(os);
+            }
+            }, lit);
+
+    os << "]" << std::endl;
+}
+
+void NamedOperand::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "NamedOperand [ name = " << std::endl;
+    
+    name.print(os, depth + 1);
+
+    indent(os, depth);
+    os << "type = ";
+    if (type_args) {
+        os << std::endl;
+        type_args->print(os, depth + 1);
+    } else {
+        os << "None" << std::endl;
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void Selector::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "Selector [ ident = " << ident << "]" << std::endl;
+}
+
+void Index::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "Index [" << std::endl;
+
+    assert(inner);
+    inner->print(os, depth + 1);
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void Slice::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "Slice [" << std::endl;
+
+    if (low) {
+        low->print(os, depth + 1);
+    }
+
+    if (high) {
+        high->print(os, depth + 1);
+    }
+
+    if (max) {
+        max->print(os, depth + 1);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void TypeAssertion::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "TypeAssertion [" << std::endl;
+
+    assert(type);
+    type->print(os, depth + 1);
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void Arguments::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "Arguments [ elipses = ";
+    os << (elipses ? "true" : "false") << std::endl;
+
+    exps.print(os, depth + 1);
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void ParenExpression::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "ParenExpression [" << std::endl;
+
+    assert(inner);
+    inner->print(os, depth + 1);
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void PrimaryExpression::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "PrimaryExpression [" << std::endl;
+
+    std::visit(overloaded {
+            [&](const TypeLit &tl) {
+                reinterpret_cast<const ASTNode *>(&tl)->print(os, depth + 1);
+            },
+            [&](const auto &ast) {
+                ast.print(os, depth + 1);
+            }
+            }, inner);
+
+    for (const auto &outer : outers) {
+        std::visit(overloaded {
+                [&](const auto &ast) {
+                ast.print(os, depth + 1);
+                }
+                }, outer);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void UnaryExpression::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "UnaryExpression [ ops = ";
+
+    for (const auto &op : unary_ops) {
+        os << op << ", ";
+    }
+
+    os << "expr = " << std::endl;
+
+    expr.print(os, depth + 1);
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void BinaryExpression::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "BinaryExpression [ op = " << op << ", lhs = " << std::endl;
+
+    assert(lhs && rhs);
+    lhs->print(os, depth + 1);
+
+    indent(os, depth);
+    os << "rhs = " << std::endl;
+
+    rhs->print(os, depth + 1);
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void ConstSpec::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "ConstSpec [ idents = " << std::endl;
+
+    idents.print(os, depth + 1);
+
+    if (type) {
+        indent(os, depth);
+        os << "type = " << std::endl;
+        type->print(os, depth + 1);
+    }
+
+    if (exprs) {
+        indent(os, depth);
+        os << "exprs = " << std::endl;
+        exprs->print(os, depth + 1);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void ConstDecl::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "ConstDecl [ " << std::endl;
+
+    for (const auto &spec : decls) {
+        spec.print(os, depth + 1);
     }
 
     indent(os, depth);
