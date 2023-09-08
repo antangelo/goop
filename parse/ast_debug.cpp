@@ -525,6 +525,42 @@ void ConstDecl::print(std::ostream &os, int depth) const
     os << "]" << std::endl;
 }
 
+void VarSpec::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "VarSpec [ idents = " << std::endl;
+
+    idents.print(os, depth + 1);
+
+    if (type) {
+        indent(os, depth);
+        os << "type = " << std::endl;
+        type->print(os, depth + 1);
+    }
+
+    if (exprs) {
+        indent(os, depth);
+        os << "exprs = " << std::endl;
+        exprs->print(os, depth + 1);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
+void VarDecl::print(std::ostream &os, int depth) const
+{
+    indent(os, depth);
+    os << "VarDecl [ " << std::endl;
+
+    for (const auto &spec : decls) {
+        spec.print(os, depth + 1);
+    }
+
+    indent(os, depth);
+    os << "]" << std::endl;
+}
+
 } // namespace parse
 
 } // namespace goop

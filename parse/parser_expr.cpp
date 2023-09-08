@@ -287,6 +287,11 @@ ExpressionList parse_expression_list(tokens::TokenStream &ts)
     return ExpressionList(std::move(exps));
 }
 
+bool ExpressionList::is_empty() const
+{
+    return exps.empty();
+}
+
 } // namespace parse
 
 } // namespace goop

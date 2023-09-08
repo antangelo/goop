@@ -15,7 +15,6 @@ namespace goop {
 
 namespace parse {
 
-// TODO move
 class ConstSpec : public virtual ASTNode {
     IdentifierList idents;
     std::optional<Type> type;
@@ -46,7 +45,35 @@ class ConstDecl : public virtual ASTNode {
     void print(std::ostream &os, int depth) const override;
 };
 
-// TODO
+class VarSpec : public virtual ASTNode {
+    IdentifierList idents;
+    std::optional<Type> type;
+    std::optional<ExpressionList> exprs;
+
+    public:
+    VarSpec(IdentifierList idents):
+        idents{std::move(idents)}, type{std::nullopt},
+        exprs{std::nullopt} {}
+    VarSpec(IdentifierList idents, std::optional<Type> type):
+        idents{std::move(idents)}, type{std::move(type)},
+        exprs{std::nullopt} {}
+    VarSpec(IdentifierList idents, std::optional<Type> type, std::optional<ExpressionList> exprs):
+        idents{std::move(idents)}, type{std::move(type)},
+        exprs{std::move(exprs)} {}
+    VarSpec(IdentifierList idents, std::optional<ExpressionList> exprs):
+        idents{std::move(idents)}, type{std::nullopt},
+        exprs{std::move(exprs)} {}
+
+    void print(std::ostream &os, int depth) const override;
+};
+
+class VarDecl : public virtual ASTNode {
+    std::vector<VarSpec> decls;
+
+    public:
+    VarDecl(std::vector<VarSpec> decls): decls{std::move(decls)} {}
+    void print(std::ostream &os, int depth) const override;
+};
 
 class PackageClause : public virtual ASTNode {
     tokens::Identifier package_name;
@@ -134,6 +161,8 @@ std::optional<TopLevelDecl> parse_top_level_decl(tokens::TokenStream &ts);
 
 std::optional<ConstSpec> parse_const_spec(tokens::TokenStream &ts);
 std::optional<ConstDecl> parse_const_decl(tokens::TokenStream &ts);
+std::optional<VarSpec> parse_var_spec(tokens::TokenStream &ts);
+std::optional<VarDecl> parse_var_decl(tokens::TokenStream &ts);
 
 } // namespace parse
 

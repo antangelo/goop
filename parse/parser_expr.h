@@ -33,6 +33,8 @@ class ExpressionList : public virtual ASTNode {
         exps{std::move(exps)} {}
 
     void print(std::ostream &, int) const override;
+
+    bool is_empty() const;
 };
 
 struct BasicLiteral : public virtual ASTNode {

@@ -317,6 +317,31 @@ class TokenStream {
         return std::nullopt;
     }
 
+    std::optional<Punctuation> peek_punctuation(Punctuation::Kind kind)
+    {
+        skip_comments();
+        if (tokens.empty())
+            return std::nullopt;
+
+        if (auto *p = std::get_if<Punctuation>(&tokens.front())) {
+            if (p->kind == kind) {
+                return *p;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    template<typename K, typename... Args>
+    std::optional<Punctuation> peek_punctuation(K kind, Args... args)
+    {
+        if (auto match = peek_punctuation(kind)) {
+            return match;
+        }
+
+        return peek_punctuation(args...);
+    }
+
     std::optional<Punctuation> match_punctuation(Punctuation::Kind kind)
     {
         skip_comments();
