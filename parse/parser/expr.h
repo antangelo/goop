@@ -1,9 +1,10 @@
 #ifndef PARSE_PARSER_EXPR_H
 #define PARSE_PARSER_EXPR_H
 
-#include "parser_common.h"
-#include "parser_type.h"
+#include "common.h"
+#include "type.h"
 #include "tokens.h"
+#include <cstdint>
 #include <memory>
 #include <variant>
 #include <vector>
@@ -16,11 +17,6 @@ class Type;
 
 struct Expression : public virtual ASTNode {
     virtual ~Expression() {}
-
-    virtual bool is_terminal() const
-    {
-        return false;
-    }
 
     virtual void print(std::ostream &, int) const override = 0;
 };
@@ -35,6 +31,9 @@ class ExpressionList : public virtual ASTNode {
     void print(std::ostream &, int) const override;
 
     bool is_empty() const;
+    size_t size() const;
+
+    std::unique_ptr<Expression> &operator[](size_t);
 };
 
 struct BasicLiteral : public virtual ASTNode {
@@ -174,11 +173,6 @@ class UnaryExpression : public virtual Expression {
         expr{std::move(expr)}, unary_ops{std::move(unary_ops)} {}
     UnaryExpression(PrimaryExpression expr, tokens::Punctuation unary_op):
         expr{std::move(expr)}, unary_ops{std::move(unary_op)} {}
-
-    bool is_terminal() const override
-    {
-        return true;
-    }
 
     void print(std::ostream &, int) const override;
 };

@@ -1,0 +1,9 @@
+set(GOOP_PARSE_SOURCES ${GOOP_PARSE_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/common.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/expr.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/top_level.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/type.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/statement.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/decl.cpp
+    PARENT_SCOPE
+    )

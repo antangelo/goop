@@ -1,7 +1,7 @@
 #ifndef PARSE_PARSER_TYPE_H
 #define PARSE_PARSER_TYPE_H
 
-#include "parser_common.h"
+#include "common.h"
 #include "tokens.h"
 #include <memory>
 #include <optional>

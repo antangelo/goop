@@ -1,6 +1,6 @@
-#include "parser_expr.h"
-#include "parser_common.h"
-#include "parser_type.h"
+#include "expr.h"
+#include "common.h"
+#include "type.h"
 #include "tokens.h"
 #include <cassert>
 #include <memory>
@@ -290,6 +290,16 @@ ExpressionList parse_expression_list(tokens::TokenStream &ts)
 bool ExpressionList::is_empty() const
 {
     return exps.empty();
+}
+
+size_t ExpressionList::size() const
+{
+    return exps.size();
+}
+
+std::unique_ptr<Expression> &ExpressionList::operator[](size_t index)
+{
+    return exps[index];
 }
 
 } // namespace parse

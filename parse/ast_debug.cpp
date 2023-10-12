@@ -1,7 +1,7 @@
-#include "parser.h"
-#include "parser_common.h"
-#include "parser_type.h"
-#include "parser_expr.h"
+#include "parser/top_level.h"
+#include "parser/common.h"
+#include "parser/type.h"
+#include "parser/expr.h"
 #include "tokens.h"
 #include <cassert>
 #include <ostream>
